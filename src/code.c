@@ -34,9 +34,13 @@
 
 int *alloc_ints(size_t count)
 {
-    // TODO
-    (void)count;
-    return NULL;
+    int *count = (int*) malloc(count * sizeof(int));
+    if (count == NULL || 0)
+    {
+        return NULL;
+    }
+    return count;
+
 }
 
 /*
@@ -48,9 +52,13 @@ int *alloc_ints(size_t count)
 
 int *alloc_zeroed_ints(size_t count)
 {
-    // TODO
-    (void)count;
-    return NULL;
+    int *count = (int*) calloc(count * sizeof(int), sizeof(int));
+    if (count == NULL || 0)
+    {
+        return NULL;
+    }
+    return count;
+
 }
 
 /*
@@ -65,8 +73,15 @@ int *alloc_zeroed_ints(size_t count)
 
 void safe_free(void **ptr)
 {
-    // TODO
-    (void)ptr;
+    if(ptr != NULL)
+    {
+        free(ptr);
+        ptr = NULL;
+    }
+    else
+    {
+        (void)ptr;
+    }
 }
 
 /*
@@ -84,11 +99,25 @@ void safe_free(void **ptr)
 
 int *resize_ints(int *arr, size_t old_count, size_t new_count)
 {
-    // TODO
-    (void)arr;
-    (void)old_count;
-    (void)new_count;
-    return NULL;
+    if (new_count == 0 || NULL)
+    {
+        free(arr);
+        return NULL;
+    }
+    if (arr == NULL)
+    {
+        return alloc_zeroed_ints(new_count);
+    }
+    int *tmpptr = realloc( arr, new_count * sizeof(int));
+    if (tmpptr == NULL)
+    {
+        return NULL;
+    }
+    if ( new_count > old_count)
+    {
+        memset(tmpptr + old_count, 0, (new_count - old_count) * sizeof(int));
+    }
+    return tmpptr;
 }
 
 /*
@@ -101,10 +130,16 @@ int *resize_ints(int *arr, size_t old_count, size_t new_count)
 
 int *duplicate_ints(const int *src, size_t count)
 {
-    // TODO
-    (void)src;
-    (void)count;
-    return NULL;
+    int *NEW = (int*) malloc(count * sizeof(int));
+
+    if (NEW == NULL || 0)
+    {
+        return NULL;
+    }
+
+    memcpy(NEW, src, count);
+
+    return NEW;
 }
 
 /* ======================================================================
