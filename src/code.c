@@ -149,7 +149,7 @@ int *duplicate_ints(const int *src, size_t count)
  *   size <= capacity,  capacity >= 1,
  *   every byte of data from index `size` on is 0.
  * ====================================================================== */
-
+ 
 /*
  * STEP 6: buffer_create
  *
