@@ -162,9 +162,29 @@ int *duplicate_ints(const int *src, size_t count)
 
 ByteBuffer *buffer_create(size_t capacity)
 {
-    // TODO
-    (void)capacity;
-    return NULL;
+    if (capacity == 0)
+    {
+        return NULL;
+    }
+
+    ByteBuffer *buf = malloc(sizeof(ByteBuffer));
+    if (buf == NULL)
+    {
+        return NULL;
+    }
+
+    buf->data = malloc(capacity);
+    if (buf->data == NULL)
+    {
+        free(buf);
+        return NULL;
+    }
+
+    memset(buf->data, 0, capacity);
+    buf->size = 0;
+    buf->capacity = capacity;
+
+    return buf;
 }
 
 /*
@@ -181,9 +201,14 @@ ByteBuffer *buffer_create(size_t capacity)
 
 bool buffer_reserve(ByteBuffer *buf, size_t min_capacity)
 {
-    // TODO
-    (void)buf;
-    (void)min_capacity;
+    if (buf == NULL)
+    {
+        return false;
+    }
+    if (min_capacity <= buf->capacity)
+    {
+        return true;
+    }
     return false;
 }
 
@@ -199,11 +224,23 @@ bool buffer_reserve(ByteBuffer *buf, size_t min_capacity)
 
 bool buffer_append(ByteBuffer *buf, const void *data, size_t n)
 {
-    // TODO
-    (void)buf;
-    (void)data;
-    (void)n;
-    return false;
+    if (buf == NULL || (data == NULL && n > 0))
+    {
+        return false;
+    }
+    if (n == 0)
+    {
+        return true;
+    }
+
+    if (!buffer_reserve(buf, buf->size + n))
+    {
+        return false;
+    }
+
+    memcpy(buf->data + buf->size, data, n);
+    buf->size += n;
+    return true;
 }
 
 /*
@@ -214,10 +251,7 @@ bool buffer_append(ByteBuffer *buf, const void *data, size_t n)
 
 bool buffer_append_byte(ByteBuffer *buf, unsigned char byte)
 {
-    // TODO
-    (void)buf;
-    (void)byte;
-    return false;
+    return buffer_append(buf, &byte, 1);
 }
 
 /*
@@ -231,10 +265,18 @@ bool buffer_append_byte(ByteBuffer *buf, unsigned char byte)
 
 bool buffer_append_string(ByteBuffer *buf, const char *str)
 {
-    // TODO
-    (void)buf;
-    (void)str;
-    return false;
+    if (str == NULL)
+    {
+        return false;
+    }
+
+    size_t len = strlen(str);
+    if (len == 0)
+    {
+        return true;
+    }
+
+    return buffer_append(buf, str, len);
 }
 
 /*
@@ -248,10 +290,18 @@ bool buffer_append_string(ByteBuffer *buf, const char *str)
 
 int buffer_find(const ByteBuffer *buf, unsigned char byte)
 {
-    // TODO
-    (void)buf;
-    (void)byte;
-    return -1;
+    if (buf == NULL)
+    {
+        return -1;
+    }
+
+    const void *found = memchr(buf->data, byte, buf->size);
+    if (found == NULL)
+    {
+        return -1;
+    }
+
+    return (const char *)found - (const char *)buf->data;
 }
 
 /*
@@ -264,10 +314,17 @@ int buffer_find(const ByteBuffer *buf, unsigned char byte)
 
 bool buffer_equals(const ByteBuffer *a, const ByteBuffer *b)
 {
-    // TODO
-    (void)a;
-    (void)b;
-    return false;
+    if (a == NULL || b == NULL)
+    {
+        return false;
+    }
+
+    if (a->size != b->size)
+    {
+        return false;
+    }
+
+    return memcmp(a->data, b->data, a->size) == 0;
 }
 
 /*
@@ -285,12 +342,25 @@ bool buffer_equals(const ByteBuffer *a, const ByteBuffer *b)
 
 bool buffer_insert(ByteBuffer *buf, size_t pos, const void *data, size_t n)
 {
-    // TODO
-    (void)buf;
-    (void)pos;
-    (void)data;
-    (void)n;
-    return false;
+    if (buf == NULL || pos > buf->size || (data == NULL && n > 0))
+    {
+        return false;
+    }
+
+    if (n == 0)
+    {
+        return true;
+    }
+
+    if (!buffer_reserve(buf, buf->size + n))
+    {
+        return false;
+    }
+
+    memmove(buf->data + pos + n, buf->data + pos, buf->size - pos);
+    memcpy(buf->data + pos, data, n);
+    buf->size += n;
+    return true;
 }
 
 /*
@@ -306,11 +376,20 @@ bool buffer_insert(ByteBuffer *buf, size_t pos, const void *data, size_t n)
 
 bool buffer_remove(ByteBuffer *buf, size_t pos, size_t n)
 {
-    // TODO
-    (void)buf;
-    (void)pos;
-    (void)n;
-    return false;
+    if (buf == NULL || pos >= buf->size || n == 0)
+    {
+        return false;
+    }
+
+    if (n > buf->size - pos)
+    {
+        return false;
+    }
+
+    memmove(buf->data + pos, buf->data + pos + n, buf->size - pos - n);
+    memset(buf->data + buf->size - n, 0, n);
+    buf->size -= n;
+    return true;
 }
 
 /*
@@ -322,8 +401,13 @@ bool buffer_remove(ByteBuffer *buf, size_t pos, size_t n)
 
 void buffer_clear(ByteBuffer *buf)
 {
-    // TODO
-    (void)buf;
+    if (buf == NULL)
+    {
+        return;
+    }
+
+    buf->size = 0;
+    memset(buf->data, 0, buf->capacity);
 }
 
 /*
@@ -337,8 +421,14 @@ void buffer_clear(ByteBuffer *buf)
 
 void buffer_destroy(ByteBuffer **buf)
 {
-    // TODO
-    (void)buf;
+    if (buf == NULL || *buf == NULL)
+    {
+        return;
+    }
+
+    free((*buf)->data);
+    free(*buf);
+    *buf = NULL;
 }
 
 /* ======================================================================
@@ -357,9 +447,24 @@ void buffer_destroy(ByteBuffer **buf)
 
 ByteBuffer *buffer_clone(const ByteBuffer *src)
 {
-    // TODO
-    (void)src;
-    return NULL;
+    if (src == NULL)
+    {
+        return NULL;
+    }
+
+    ByteBuffer *clone = buffer_create(src->capacity);
+    if (clone == NULL)
+    {
+        return NULL;
+    }
+
+    if (!buffer_append(clone, src->data, src->size))
+    {
+        buffer_destroy(&clone);
+        return NULL;
+    }
+
+    return clone;
 }
 
 /*
@@ -374,10 +479,36 @@ ByteBuffer *buffer_clone(const ByteBuffer *src)
 
 ByteBuffer *buffer_concat(const ByteBuffer *a, const ByteBuffer *b)
 {
-    // TODO
-    (void)a;
-    (void)b;
-    return NULL;
+    if (a == NULL || b == NULL)
+    {
+        return NULL;
+    }
+
+    size_t total_size = a->size + b->size;
+    if (total_size == 0)
+    {
+        return buffer_create(1);
+    }
+
+    ByteBuffer *result = buffer_create(total_size);
+    if (result == NULL)
+    {
+        return NULL;
+    }
+
+    if (!buffer_append(result, a->data, a->size))
+    {
+        buffer_destroy(&result);
+        return NULL;
+    }
+
+    if (!buffer_append(result, b->data, b->size))
+    {
+        buffer_destroy(&result);
+        return NULL;
+    }
+
+    return result;
 }
 
 /*
@@ -390,10 +521,27 @@ ByteBuffer *buffer_concat(const ByteBuffer *a, const ByteBuffer *b)
 
 size_t buffer_count(const ByteBuffer *buf, unsigned char byte)
 {
-    // TODO
-    (void)buf;
-    (void)byte;
-    return 0;
+    if (buf == NULL)
+    {
+        return 0;
+    }
+
+    size_t count = 0;
+    const unsigned char *pos = buf->data;
+    const unsigned char *end = buf->data + buf->size;
+
+    while (pos < end)
+    {
+        const unsigned char *found = memchr(pos, byte, end - pos);
+        if (found == NULL)
+        {
+            break;
+        }
+        count++;
+        pos = found + 1;
+    }
+
+    return count;
 }
 
 /*
