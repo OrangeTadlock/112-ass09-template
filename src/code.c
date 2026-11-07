@@ -34,12 +34,18 @@
 
 int *alloc_ints(size_t count)
 {
-    int *count = (int*) malloc(count * sizeof(int));
-    if (count == NULL || 0)
+    if (count == 0)
     {
         return NULL;
     }
-    return count;
+
+    int *ptr = (int*) malloc(count * sizeof(int));
+    if (ptr == NULL)
+    {
+        return NULL;
+    }
+
+    return ptr;
 
 }
 
@@ -52,12 +58,19 @@ int *alloc_ints(size_t count)
 
 int *alloc_zeroed_ints(size_t count)
 {
-    int *count = (int*) calloc(count * sizeof(int), sizeof(int));
-    if (count == NULL || 0)
+    if (count == 0)
     {
         return NULL;
     }
-    return count;
+
+    int *ptr = (int*) calloc(count, sizeof(int));
+    if (ptr == NULL)
+    {
+        return NULL;
+    }
+
+    return ptr;
+}
 
 }
 
@@ -75,8 +88,8 @@ void safe_free(void **ptr)
 {
     if(ptr != NULL)
     {
-        free(ptr);
-        ptr = NULL;
+        free(*ptr);
+        *ptr = NULL;
     }
     else
     {
@@ -99,7 +112,7 @@ void safe_free(void **ptr)
 
 int *resize_ints(int *arr, size_t old_count, size_t new_count)
 {
-    if (new_count == 0 || NULL)
+    if (new_count == 0 || new_count == old_count)
     {
         free(arr);
         return NULL;
@@ -132,7 +145,7 @@ int *duplicate_ints(const int *src, size_t count)
 {
     int *NEW = (int*) malloc(count * sizeof(int));
 
-    if (NEW == NULL || 0)
+    if (NEW == NULL || count == 0)
     {
         return NULL;
     }
@@ -556,9 +569,14 @@ size_t buffer_count(const ByteBuffer *buf, unsigned char byte)
 
 bool buffer_shrink_to_fit(ByteBuffer *buf)
 {
-    // TODO
+    unsigned char *temp = (unsigned char*) realloc(buf->data, buf->size);
+    if (temp == NULL)
+    {
+        return false;
+    }
+    buf->data = temp;
     (void)buf;
-    return false;
+    return true;
 }
 
 /*
@@ -584,11 +602,69 @@ bool buffer_shrink_to_fit(ByteBuffer *buf)
 
 char **buffer_split(const ByteBuffer *buf, unsigned char delim, size_t *out_count)
 {
-    // TODO
-    (void)buf;
-    (void)delim;
-    (void)out_count;
-    return NULL;
+    if (buf == NULL || out_count == NULL)
+    {
+        if (out_count != NULL)
+        {
+            *out_count = 0;
+        }
+        return NULL;
+    }
+
+    *out_count = 0;
+    const unsigned char *pos = buf->data;
+    const unsigned char *end = buf->data + buf->size;
+
+    // First pass: count the number of tokens
+    while (pos < end)
+    {
+        const unsigned char *found = memchr(pos, delim, end - pos);
+        if (found == NULL)
+        {
+            break;
+        }
+        (*out_count)++;
+        pos = found + 1;
+    }
+    (*out_count)++; // Account for the last token
+
+    // Allocate memory for the array of token pointers
+    char **tokens = (char**) malloc((*out_count) * sizeof(char*));
+    if (tokens == NULL)
+    {
+        *out_count = 0;
+        return NULL;
+    }
+
+    // Second pass: extract the tokens
+    pos = buf->data;
+    size_t token_index = 0;
+
+    while (pos < end)
+    {
+        const unsigned char *found = memchr(pos, delim, end - pos);
+        size_t token_size = (found == NULL) ? (end - pos) : (found - pos);
+
+        tokens[token_index] = (char*) malloc(token_size + 1);
+        if (tokens[token_index] == NULL)
+        {
+            free_tokens(&tokens, token_index);
+            *out_count = 0;
+            return NULL;
+        }
+
+        memcpy(tokens[token_index], pos, token_size);
+        tokens[token_index][token_size] = '\0';
+        token_index++;
+
+        if (found == NULL)
+        {
+            break;
+        }
+        pos = found + 1;
+    }
+
+    return tokens;
 }
 
 /*
@@ -602,7 +678,19 @@ char **buffer_split(const ByteBuffer *buf, unsigned char delim, size_t *out_coun
 
 void free_tokens(char ***tokens, size_t count)
 {
-    // TODO
+    if (tokens == NULL || *tokens == NULL)
+    {
+        return;
+    }
+
+    for (size_t i = 0; i < count; i++)
+    {
+        free((*tokens)[i]);
+        (*tokens)[i] = NULL;
+    }
+
+    free(*tokens);
+    *tokens = NULL;
     (void)tokens;
     (void)count;
 }
