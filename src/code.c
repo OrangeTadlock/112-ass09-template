@@ -72,7 +72,7 @@ int *alloc_zeroed_ints(size_t count)
     return ptr;
 }
 
-}
+
 
 /*
  * STEP 3: safe_free
