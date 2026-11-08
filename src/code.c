@@ -112,11 +112,16 @@ void safe_free(void **ptr)
 
 int *resize_ints(int *arr, size_t old_count, size_t new_count)
 {
-    if (new_count == 0 || new_count == old_count)
-    {
-        free(arr);
-        return NULL;
-    }
+    if (new_count == 0)
+{
+    free(arr);
+    return NULL;
+}
+
+if (new_count == old_count)
+{
+    return arr;
+}
     if (arr == NULL)
     {
         return alloc_zeroed_ints(new_count);
@@ -228,8 +233,15 @@ bool buffer_reserve(ByteBuffer *buf, size_t min_capacity)
     }
 
     size_t new_capacity = buf->capacity;
+
     while (new_capacity < min_capacity)
     {
+        if (new_capacity > SIZE_MAX / 2)
+        {
+            new_capacity = min_capacity;
+            break;
+        }
+
         new_capacity *= 2;
     }
 
@@ -413,7 +425,7 @@ bool buffer_insert(ByteBuffer *buf, size_t pos, const void *data, size_t n)
 
 bool buffer_remove(ByteBuffer *buf, size_t pos, size_t n)
 {
-    if (buf == NULL || pos >= buf->size || n == 0)
+    if (buf == NULL || pos > buf->size)
     {
         return false;
     }
@@ -423,9 +435,19 @@ bool buffer_remove(ByteBuffer *buf, size_t pos, size_t n)
         return false;
     }
 
-    memmove(buf->data + pos, buf->data + pos + n, buf->size - pos - n);
+    if (n == 0)
+    {
+        return true;
+    }
+
+    memmove(buf->data + pos,
+            buf->data + pos + n,
+            buf->size - pos - n);
+
     memset(buf->data + buf->size - n, 0, n);
+
     buf->size -= n;
+
     return true;
 }
 
@@ -521,6 +543,10 @@ ByteBuffer *buffer_concat(const ByteBuffer *a, const ByteBuffer *b)
         return NULL;
     }
 
+    if (a->size > (size_t)-1 - b->size)
+    {
+            return NULL;
+    }
     size_t total_size = a->size + b->size;
     if (total_size == 0)
     {
@@ -640,67 +666,91 @@ bool buffer_shrink_to_fit(ByteBuffer *buf)
 
 char **buffer_split(const ByteBuffer *buf, unsigned char delim, size_t *out_count)
 {
-    if (buf == NULL || out_count == NULL)
+    if (out_count == NULL)
     {
-        if (out_count != NULL)
-        {
-            *out_count = 0;
-        }
         return NULL;
     }
 
     *out_count = 0;
-    const unsigned char *pos = buf->data;
-    const unsigned char *end = buf->data + buf->size;
 
-    // First pass: count the number of tokens
-    while (pos < end)
+    if (buf == NULL)
     {
-        const unsigned char *found = memchr(pos, delim, end - pos);
-        if (found == NULL)
-        {
-            break;
-        }
-        (*out_count)++;
-        pos = found + 1;
-    }
-    (*out_count)++; // Account for the last token
-
-    // Allocate memory for the array of token pointers
-    char **tokens = (char**) malloc((*out_count) * sizeof(char*));
-    if (tokens == NULL)
-    {
-        *out_count = 0;
         return NULL;
     }
 
-    // Second pass: extract the tokens
-    pos = buf->data;
-    size_t token_index = 0;
+    size_t capacity = 4;
+    size_t count = 0;
 
-    while (pos < end)
+    char **tokens = malloc(capacity * sizeof(char *));
+
+    if (tokens == NULL)
+    {
+        return NULL;
+    }
+
+    const unsigned char *pos = buf->data;
+    const unsigned char *end = buf->data + buf->size;
+
+    while (1)
     {
         const unsigned char *found = memchr(pos, delim, end - pos);
-        size_t token_size = (found == NULL) ? (end - pos) : (found - pos);
 
-        tokens[token_index] = (char*) malloc(token_size + 1);
-        if (tokens[token_index] == NULL)
+        size_t len;
+
+        if (found == NULL)
         {
-            free_tokens(&tokens, token_index);
-            *out_count = 0;
+            len = end - pos;
+        }
+        else
+        {
+            len = found - pos;
+        }
+
+        if (count == capacity)
+        {
+            if (capacity > (size_t)-1 / 2)
+            {
+                free_tokens(&tokens, count);
+                return NULL;
+            }
+
+            size_t new_capacity = capacity * 2;
+
+            char **temp = realloc(tokens,
+                                  new_capacity * sizeof(char *));
+
+            if (temp == NULL)
+            {
+                free_tokens(&tokens, count);
+                return NULL;
+            }
+
+            tokens = temp;
+            capacity = new_capacity;
+        }
+
+        tokens[count] = malloc(len + 1);
+
+        if (tokens[count] == NULL)
+        {
+            free_tokens(&tokens, count);
             return NULL;
         }
 
-        memcpy(tokens[token_index], pos, token_size);
-        tokens[token_index][token_size] = '\0';
-        token_index++;
+        memcpy(tokens[count], pos, len);
+        tokens[count][len] = '\0';
+
+        count++;
 
         if (found == NULL)
         {
             break;
         }
+
         pos = found + 1;
     }
+
+    *out_count = count;
 
     return tokens;
 }
