@@ -27,7 +27,7 @@ int main()
     buffer_append_byte(b, ' ');
     buffer_append_string(b, "World");
     buffer_insert(b, 5, ",", 1);
-    printf("size=%zu capacity=%zu find('W')=%d\n", b->size, b->capacity, buffer_find(b, 'W'));
+    printf("size=%lu capacity=%lu find('W')=%d\n", (unsigned long)b->size, (unsigned long)b->capacity, buffer_find(b, 'W'));
     printf("content: %.*s\n", (int)b->size, (char *)b->data);
 
     // Part 3
@@ -37,7 +37,7 @@ int main()
     char **tokens = buffer_split(b, ',', &n);
     for (size_t i = 0; i < n; i++)
     {
-        printf("token %zu: \"%s\"\n", i, tokens[i]);
+        printf("token %lu: \"%s\"\n", (unsigned long)i, tokens[i]);
     }
     free_tokens(&tokens, n);
 

@@ -14,7 +14,6 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 
 /* ======================================================================
  * PART 1: Raw dynamic memory (malloc, calloc, realloc, free)
