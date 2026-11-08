@@ -233,15 +233,8 @@ bool buffer_reserve(ByteBuffer *buf, size_t min_capacity)
     }
 
     size_t new_capacity = buf->capacity;
-
     while (new_capacity < min_capacity)
     {
-        if (new_capacity > SIZE_MAX / 2)
-        {
-            new_capacity = min_capacity;
-            break;
-        }
-
         new_capacity *= 2;
     }
 
