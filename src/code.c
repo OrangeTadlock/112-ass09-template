@@ -221,11 +221,29 @@ bool buffer_reserve(ByteBuffer *buf, size_t min_capacity)
     {
         return false;
     }
+
     if (min_capacity <= buf->capacity)
     {
         return true;
     }
-    return false;
+
+    size_t new_capacity = buf->capacity;
+    while (new_capacity < min_capacity)
+    {
+        new_capacity *= 2;
+    }
+
+    unsigned char *temp = realloc(buf->data, new_capacity);
+    if (temp == NULL)
+    {
+        return false;
+    }
+
+    buf->data = temp;
+    memset(buf->data + buf->capacity, 0, new_capacity - buf->capacity);
+    buf->capacity = new_capacity;
+
+    return true;
 }
 
 /*
@@ -244,6 +262,7 @@ bool buffer_append(ByteBuffer *buf, const void *data, size_t n)
     {
         return false;
     }
+
     if (n == 0)
     {
         return true;
@@ -256,6 +275,7 @@ bool buffer_append(ByteBuffer *buf, const void *data, size_t n)
 
     memcpy(buf->data + buf->size, data, n);
     buf->size += n;
+
     return true;
 }
 
@@ -268,6 +288,7 @@ bool buffer_append(ByteBuffer *buf, const void *data, size_t n)
 bool buffer_append_byte(ByteBuffer *buf, unsigned char byte)
 {
     return buffer_append(buf, &byte, 1);
+    
 }
 
 /*
