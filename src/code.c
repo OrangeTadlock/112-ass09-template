@@ -143,16 +143,19 @@ int *resize_ints(int *arr, size_t old_count, size_t new_count)
 
 int *duplicate_ints(const int *src, size_t count)
 {
-    int *NEW = (int*) malloc(count * sizeof(int));
-
-    if (NEW == NULL || count == 0)
-    {
-        return NULL;
-    }
-
-    memcpy(NEW, src, count);
-
-    return NEW;
+    if (src == NULL || count == 0)
+        {
+            return NULL;
+        }
+    
+        int *copy = (int*) malloc(count * sizeof(int));
+        if (copy == NULL)
+        {
+            return NULL;
+        }
+    
+        memcpy(copy, src, count * sizeof(int));
+        return copy;   
 }
 
 /* ======================================================================
