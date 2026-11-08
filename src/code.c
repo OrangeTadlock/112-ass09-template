@@ -593,13 +593,27 @@ size_t buffer_count(const ByteBuffer *buf, unsigned char byte)
 
 bool buffer_shrink_to_fit(ByteBuffer *buf)
 {
-    unsigned char *temp = (unsigned char*) realloc(buf->data, buf->size);
-    if (temp == NULL)
+    if (buf == NULL)
     {
         return false;
     }
+
+    size_t new_capacity = (buf->size > 0) ? buf->size : 1;
+
+    if (new_capacity == buf->capacity)
+    {
+        return true; // Nothing to do
+    }
+
+    unsigned char *temp = realloc(buf->data, new_capacity);
+    if (temp == NULL)
+    {
+        return false; // realloc failed, buffer unchanged
+    }
+
     buf->data = temp;
-    (void)buf;
+    buf->capacity = new_capacity;
+
     return true;
 }
 
